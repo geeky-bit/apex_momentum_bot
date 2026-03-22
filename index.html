@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX MOMENTUM — Auto Trading System</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050508;
+    --bg2: #0a0a10;
+    --bg3: #10101a;
+    --border: #1e1e2e;
+    --border2: #2a2a3e;
+    --accent: #00ff88;
+    --accent2: #0088ff;
+    --red: #ff3355;
+    --yellow: #ffcc00;
+    --text: #e0e0f0;
+    --text2: #8888aa;
+    --text3: #444466;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --display: 'Bebas Neue', cursive;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,255,136,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,136,0.015) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanline effect */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .logo-text {
+    font-family: var(--display);
+    font-size: 36px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,255,136,0.4);
+    line-height: 1;
+  }
+
+  .logo-sub {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--accent);
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .mode-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .mode-btn {
+    padding: 6px 14px;
+    background: transparent;
+    color: var(--text2);
+    border: none;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+
+  .mode-btn.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+  }
+
+  .engine-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+
+  .toggle-switch {
+    width: 40px;
+    height: 20px;
+    background: var(--border2);
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.3s;
+  }
+
+  .toggle-switch.on { background: var(--accent); }
+
+  .toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.3s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  }
+
+  .toggle-switch.on .toggle-knob { transform: translateX(20px); }
+
+  .engine-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--text2);
+  }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+  }
+
+  .stat-card.green::before { background: var(--accent); }
+  .stat-card.blue::before { background: var(--accent2); }
+  .stat-card.red::before { background: var(--red); }
+  .stat-card.yellow::before { background: var(--yellow); }
+
+  .stat-label {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .stat-value {
+    font-family: var(--display);
+    font-size: 28px;
+    line-height: 1;
+    letter-spacing: 1px;
+  }
+
+  .stat-value.green { color: var(--accent); text-shadow: 0 0 20px rgba(0,255,136,0.3); }
+  .stat-value.blue { color: var(--accent2); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.white { color: var(--text); }
+  .stat-value.yellow { color: var(--yellow); }
+
+  .stat-delta {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 4px;
+  }
+
+  .stat-delta.up { color: var(--accent); }
+  .stat-delta.down { color: var(--red); }
+
+  /* MAIN GRID */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  .left-col { display: flex; flex-direction: column; gap: 20px; }
+
+  /* PANEL */
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text2);
+    text-transform: uppercase;
+  }
+
+  .panel-tag {
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+
+  .tag-green { background: rgba(0,255,136,0.1); color: var(--accent); border: 1px solid rgba(0,255,136,0.2); }
+  .tag-blue { background: rgba(0,136,255,0.1); color: var(--accent2); border: 1px solid rgba(0,136,255,0.2); }
+  .tag-red { background: rgba(255,51,85,0.1); color: var(--red); border: 1px solid rgba(255,51,85,0.2); }
+  .tag-yellow { background: rgba(255,204,0,0.1); color: var(--yellow); border: 1px solid rgba(255,204,0,0.2); }
+
+  /* CHART */
+  .chart-container {
+    padding: 16px;
+    position: relative;
+  }
+
+  canvas {
+    width: 100% !important;
+  }
+
+  /* STRATEGY CARDS */
+  .strategies-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+  }
+
+  .strategy-card {
+    background: var(--bg2);
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    position: relative;
+  }
+
+  .strategy-card:hover { background: var(--bg3); }
+
+  .strategy-card.active {
+    background: var(--bg3);
+  }
+
+  .strategy-card.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent);
+  }
+
+  .strategy-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .strategy-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.5px;
+  }
+
+  .strategy-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 2px;
+  }
+
+  .status-on { background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: pulse 2s infinite; }
+  .status-off { background: var(--text3); }
+
+  .strategy-desc {
+    font-size: 10px;
+    color: var(--text3);
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+
+  .strategy-metrics {
+    display: flex;
+    gap: 16px;
+  }
+
+  .s-metric { }
+  .s-metric-label { font-size: 9px; color: var(--text3); letter-spacing: 1px; }
+  .s-metric-value { font-size: 12px; font-weight: 500; }
+  .s-metric-value.green { color: var(--accent); }
+  .s-metric-value.red { color: var(--red); }
+  .s-metric-value.blue { color: var(--accent2); }
+
+  /* SIGNALS PANEL */
+  .signal-list { max-height: 320px; overflow-y: auto; }
+  .signal-list::-webkit-scrollbar { width: 3px; }
+  .signal-list::-webkit-scrollbar-track { background: var(--bg); }
+  .signal-list::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  .signal-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    animation: slideIn 0.3s ease;
+    transition: background 0.2s;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .signal-item:hover { background: var(--bg3); }
+
+  .signal-dir {
+    font-family: var(--display);
+    font-size: 14px;
+    width: 28px;
+    text-align: center;
+  }
+
+  .signal-dir.long { color: var(--accent); }
+  .signal-dir.short { color: var(--red); }
+
+  .signal-body { flex: 1; }
+  .signal-ticker { font-weight: 600; font-size: 12px; }
+  .signal-strategy { font-size: 9px; color: var(--text3); letter-spacing: 1px; }
+
+  .signal-right { text-align: right; }
+  .signal-price { font-size: 11px; color: var(--text); }
+  .signal-time { font-size: 9px; color: var(--text3); }
+
+  .signal-confidence {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 36px;
+  }
+
+  .conf-bar {
+    width: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    height: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .conf-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--accent);
+    transition: height 0.5s;
+  }
+
+  .conf-fill.med { background: var(--yellow); }
+  .conf-fill.low { background: var(--red); }
+
+  .conf-pct { font-size: 9px; color: var(--text3); }
+
+  /* POSITIONS TABLE */
+  .positions-table { width: 100%; border-collapse: collapse; }
+
+  .positions-table th {
+    padding: 8px 16px;
+    text-align: left;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .positions-table td {
+    padding: 10px 16px;
+    font-size: 11px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .positions-table tr:hover td { background: var(--bg3); }
+  .positions-table tr:last-child td { border-bottom: none; }
+
+  .ticker-cell { font-weight: 600; color: var(--text); }
+  .pnl-cell.pos { color: var(--accent); }
+  .pnl-cell.neg { color: var(--red); }
+
+  .pct-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 2px;
+    font-size: 10px;
+  }
+
+  .pct-badge.pos { background: rgba(0,255,136,0.1); color: var(--accent); }
+  .pct-badge.neg { background: rgba(255,51,85,0.1); color: var(--red); }
+
+  .side-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+
+  .side-badge.long { background: rgba(0,255,136,0.08); color: var(--accent); border: 1px solid rgba(0,255,136,0.15); }
+  .side-badge.short { background: rgba(255,51,85,0.08); color: var(--red); border: 1px solid rgba(255,51,85,0.15); }
+
+  /* RISK GAUGES */
+  .risk-panel { padding: 16px; }
+
+  .gauge-row {
+    margin-bottom: 14px;
+  }
+
+  .gauge-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  .gauge-label { font-size: 10px; color: var(--text2); }
+  .gauge-value { font-size: 10px; font-weight: 500; }
+
+  .gauge-track {
+    height: 4px;
+    background: var(--border2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .gauge-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+
+  .gauge-fill.green { background: linear-gradient(90deg, var(--accent), #00cc66); }
+  .gauge-fill.yellow { background: linear-gradient(90deg, var(--yellow), #ff9900); }
+  .gauge-fill.red { background: linear-gradient(90deg, var(--red), #ff0000); }
+
+  /* LOG */
+  .log-panel { padding: 12px 16px; max-height: 160px; overflow-y: auto; }
+  .log-panel::-webkit-scrollbar { width: 2px; }
+  .log-panel::-webkit-scrollbar-thumb { background: var(--border2); }
+
+  .log-line {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 4px;
+    animation: slideIn 0.2s ease;
+  }
+
+  .log-time { color: var(--text3); min-width: 52px; }
+  .log-msg { color: var(--text2); }
+  .log-msg.success { color: var(--accent); }
+  .log-msg.warn { color: var(--yellow); }
+  .log-msg.error { color: var(--red); }
+
+  /* BOTTOM BAR */
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .bottom-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--text3);
+  }
+
+  .bottom-stat span { color: var(--text2); }
+
+  .kill-btn {
+    padding: 6px 20px;
+    background: transparent;
+    border: 1px solid var(--red);
+    color: var(--red);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .kill-btn:hover {
+    background: var(--red);
+    color: #fff;
+  }
+
+  /* MINI CHART */
+  .mini-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    height: 24px;
+  }
+
+  .mini-bar {
+    flex: 1;
+    border-radius: 1px;
+    transition: height 0.3s;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (max-width: 600px) {
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .strategies-grid { grid-template-columns: 1fr; }
+    .logo-text { font-size: 26px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-text">APEX MOMENTUM</div>
+      <div class="logo-sub">Auto Trading System v1.0</div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        PAPER TRADING
+      </div>
+      <div class="mode-toggle">
+        <button class="mode-btn active" onclick="setMode(this,'PAPER')">PAPER</button>
+        <button class="mode-btn" onclick="setMode(this,'LIVE')">LIVE</button>
+      </div>
+      <div class="engine-toggle" onclick="toggleEngine()">
+        <div class="toggle-switch on" id="engineSwitch">
+          <div class="toggle-knob"></div>
+        </div>
+        <span class="engine-label" id="engineLabel">ENGINE ON</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- STATS ROW -->
+  <div class="stats-row">
+    <div class="stat-card green">
+      <div class="stat-label">Total P&L</div>
+      <div class="stat-value green" id="totalPnl">+$4,821</div>
+      <div class="stat-delta up" id="pnlDelta">▲ +2.41% today</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Portfolio Value</div>
+      <div class="stat-value blue" id="portValue">$204,821</div>
+      <div class="stat-delta" id="portDelta">Capital: $200,000</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Open Positions</div>
+      <div class="stat-value white" id="openPos">7</div>
+      <div class="stat-delta">3 long · 4 short</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-label">Win Rate</div>
+      <div class="stat-value yellow" id="winRate">68.4%</div>
+      <div class="stat-delta up">↑ from 64.1% last week</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Signals Today</div>
+      <div class="stat-value white" id="sigCount">24</div>
+      <div class="stat-delta">18 executed · 6 filtered</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid">
+    <div class="left-col">
+
+      <!-- P&L CHART -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Equity Curve — Today</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-size:9px;color:var(--text3)">9:30 AM → NOW</span>
+            <span class="panel-tag tag-green">+2.41%</span>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="equityChart" height="140"></canvas>
+        </div>
+      </div>
+
+      <!-- STRATEGIES -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Active Strategies</div>
+          <span class="panel-tag tag-blue">4 RUNNING</span>
+        </div>
+        <div class="strategies-grid">
+          <div class="strategy-card active" onclick="toggleStrategy(this)">
+            <div class="strategy-header">
+              <div class="strategy-name">EMA Crossover</div>
+              <div class="strategy-status status-on"></div>
+            </div>
+            <div class="strategy-desc">9/21 EMA cross + volume filter · 15m bars</div>
+            <div class="strategy-metrics">
+              <div class="s-metric">
+                <div class="s-metric-label">P&L</div>
+                <div class="s-metric-value green">+$1,840</div>
+              </div>
+              <div class="s-metric">
+                <div class="s-metric-label">WIN%</div>
+                <div class="s-metric-value blue">71%</div>
+              </div>
+              <div class="s-metric">
+                <div class="s-metric-label">TRADES</div>
+                <div class="s-metric-value">8</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="strategy-card active" onclick="toggleStrategy(this)">
+            <div class="strategy-header">
+              <div class="strategy-name">RSI Momentum</div>
+              <div class="strategy-status status-on"></div>
+            </div>
+            <div class="strategy-desc">RSI(14) cross 50 · confirm with MACD signal</div>
+            <div class="strategy-metrics">
+              <div class="s-metric">
+                <div class="s-metric-label">P&L</div>
+                <div class="s-metric-value green">+$2,140</div>
+              </div>
+              <div class="s-metric">
+                <div class="s-metric-label">WIN%</div>
+                <div class="s-metric-value blue">66%</div>
+              </div>
+              <div class="s-metric">
+                <div class="s-metric-label">TRADES</div>
+                <div class="s-metric-value">6</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="strategy-card active" onclick="toggleStrategy(this)">
+            <div class="strategy-header">
+              <div class="strategy-name">Breakout MOM</div>
+              <div class="strategy-status status-on"></div>
+            </div>
+            <div class="strategy-desc">20-day high break · ATR stop · vol surge</div>
+            <div class="strategy-metrics">
+              <div class="s-metric">
+                <div class="s-metric-label">P&L</div>
+                <div class="s-metric-value red">-$280</div>
+              </div>
+              <div class="s-metric">
+                <div class="s-metric-label">WIN%</div>
+                <div class="s-metric-value blue">60%</div>
+              </div>
+              <div class="s-metric">
+                <div class="s-metric-label">TRADES</div>
+                <div class="s-metric-value">3</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="strategy-card" onclick="toggleStrategy(this)">
+            <div class="strategy-header">
+              <div class="strategy-name">Dual Momentum</div>
+              <div class="strategy-status status-off" id="dualStatus"></div>
+            </div>
+            <div class="strategy-desc">Antonacci abs+rel MOM · monthly rebal</div>
+            <div class="strategy-metrics">
+              <div class="s-metric">
+                <div class="s-metric-label">P&L</div>
+                <div class="s-metric-value green">+$1,121</div>
+              </div>
+              <div class="s-metric">
+                <div class="s-metric-label">WIN%</div>
+                <div class="s-metric-value blue">74%</div>
+              </div>
+              <div class="s-metric">
+                <div class="s-metric-label">TRADES</div>
+                <div class="s-metric-value">5</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- POSITIONS -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Open Positions</div>
+          <span class="panel-tag tag-green">LIVE</span>
+        </div>
+        <table class="positions-table">
+          <thead>
+            <tr>
+              <th>TICKER</th>
+              <th>SIDE</th>
+              <th>SIZE</th>
+              <th>ENTRY</th>
+              <th>CURRENT</th>
+              <th>P&L</th>
+              <th>STRAT</th>
+            </tr>
+          </thead>
+          <tbody id="positionsBody">
+            <tr>
+              <td class="ticker-cell">NVDA</td>
+              <td><span class="side-badge long">LONG</span></td>
+              <td>25</td>
+              <td>$118.40</td>
+              <td>$121.80</td>
+              <td class="pnl-cell pos">+$85 <span class="pct-badge pos">+2.9%</span></td>
+              <td style="color:var(--text3);font-size:10px">EMA X</td>
+            </tr>
+            <tr>
+              <td class="ticker-cell">TSLA</td>
+              <td><span class="side-badge long">LONG</span></td>
+              <td>40</td>
+              <td>$172.10</td>
+              <td>$176.40</td>
+              <td class="pnl-cell pos">+$172 <span class="pct-badge pos">+2.5%</span></td>
+              <td style="color:var(--text3);font-size:10px">RSI</td>
+            </tr>
+            <tr>
+              <td class="ticker-cell">SPY</td>
+              <td><span class="side-badge short">SHORT</span></td>
+              <td>100</td>
+              <td>$524.00</td>
+              <td>$521.60</td>
+              <td class="pnl-cell pos">+$240 <span class="pct-badge pos">+0.5%</span></td>
+              <td style="color:var(--text3);font-size:10px">BRK</td>
+            </tr>
+            <tr>
+              <td class="ticker-cell">AMD</td>
+              <td><span class="side-badge long">LONG</span></td>
+              <td>50</td>
+              <td>$108.20</td>
+              <td>$106.10</td>
+              <td class="pnl-cell neg">-$105 <span class="pct-badge neg">-1.9%</span></td>
+              <td style="color:var(--text3);font-size:10px">EMA X</td>
+            </tr>
+            <tr>
+              <td class="ticker-cell">AAPL</td>
+              <td><span class="side-badge short">SHORT</span></td>
+              <td>60</td>
+              <td>$218.50</td>
+              <td>$215.20</td>
+              <td class="pnl-cell pos">+$198 <span class="pct-badge pos">+1.5%</span></td>
+              <td style="color:var(--text3);font-size:10px">RSI</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-col" style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- SIGNALS -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Signal Feed</div>
+          <span class="panel-tag tag-green" id="sigTag">LIVE</span>
+        </div>
+        <div class="signal-list" id="signalList"></div>
+      </div>
+
+      <!-- RISK -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Risk Monitor</div>
+          <span class="panel-tag tag-yellow">WATCH</span>
+        </div>
+        <div class="risk-panel">
+          <div class="gauge-row">
+            <div class="gauge-header">
+              <span class="gauge-label">Daily Drawdown Limit</span>
+              <span class="gauge-value" style="color:var(--accent)">2.1% / 5.0%</span>
+            </div>
+            <div class="gauge-track">
+              <div class="gauge-fill green" style="width:42%"></div>
+            </div>
+          </div>
+          <div class="gauge-row">
+            <div class="gauge-header">
+              <span class="gauge-label">Capital Deployed</span>
+              <span class="gauge-value" style="color:var(--yellow)">74% / 85%</span>
+            </div>
+            <div class="gauge-track">
+              <div class="gauge-fill yellow" style="width:87%"></div>
+            </div>
+          </div>
+          <div class="gauge-row">
+            <div class="gauge-header">
+              <span class="gauge-label">Max Position Size</span>
+              <span class="gauge-value" style="color:var(--accent)">8.4% / 15%</span>
+            </div>
+            <div class="gauge-track">
+              <div class="gauge-fill green" style="width:56%"></div>
+            </div>
+          </div>
+          <div class="gauge-row">
+            <div class="gauge-header">
+              <span class="gauge-label">Sector Concentration</span>
+              <span class="gauge-value" style="color:var(--accent)">38% TECH</span>
+            </div>
+            <div class="gauge-track">
+              <div class="gauge-fill green" style="width:38%"></div>
+            </div>
+          </div>
+          <div class="gauge-row">
+            <div class="gauge-header">
+              <span class="gauge-label">Beta Exposure</span>
+              <span class="gauge-value" style="color:var(--yellow)">1.42</span>
+            </div>
+            <div class="gauge-track">
+              <div class="gauge-fill yellow" style="width:71%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOG -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Execution Log</div>
+          <span style="font-size:9px;color:var(--text3)">AUTO-SCROLL</span>
+        </div>
+        <div class="log-panel" id="logPanel"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div class="bottom-stat">BROKER <span>Alpaca Markets</span></div>
+      <div class="bottom-stat">FEED <span>Polygon.io</span></div>
+      <div class="bottom-stat">LATENCY <span id="latency">12ms</span></div>
+      <div class="bottom-stat">UPTIME <span>6h 14m</span></div>
+      <div class="bottom-stat">ORDERS <span id="orderCount">18 filled · 0 rejected</span></div>
+    </div>
+    <button class="kill-btn" onclick="killSwitch()">⬛ KILL SWITCH</button>
+  </div>
+
+</div>
+
+<script>
+// ── SIGNALS ──────────────────────────────────────────────────────────────────
+const signalTemplates = [
+  { ticker: 'NVDA', dir: 'long',  strat: 'EMA CROSS', prices: ['$118.40','$119.20','$120.10'] },
+  { ticker: 'TSLA', dir: 'long',  strat: 'RSI MOM',   prices: ['$171.40','$172.80','$174.20'] },
+  { ticker: 'AMD',  dir: 'short', strat: 'BREAKOUT',  prices: ['$109.10','$107.80','$106.40'] },
+  { ticker: 'SPY',  dir: 'short', strat: 'EMA CROSS', prices: ['$524.40','$523.10','$521.60'] },
+  { ticker: 'MSFT', dir: 'long',  strat: 'RSI MOM',   prices: ['$378.20','$380.10','$382.40'] },
+  { ticker: 'AAPL', dir: 'short', strat: 'DUAL MOM',  prices: ['$219.80','$218.10','$216.50'] },
+  { ticker: 'GOOGL',dir: 'long',  strat: 'EMA CROSS', prices: ['$168.40','$169.80','$171.20'] },
+  { ticker: 'META', dir: 'long',  strat: 'BREAKOUT',  prices: ['$502.10','$506.80','$510.40'] },
+  { ticker: 'QQQ',  dir: 'short', strat: 'RSI MOM',   prices: ['$440.20','$438.10','$435.80'] },
+];
+
+let signals = [];
+let now = new Date();
+
+function timeStr() {
+  const d = new Date();
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+}
+
+function addSignal() {
+  const t = signalTemplates[Math.floor(Math.random() * signalTemplates.length)];
+  const price = t.prices[Math.floor(Math.random() * t.prices.length)];
+  const conf = Math.floor(Math.random() * 35) + 55;
+  const s = { ...t, price, conf, time: timeStr() };
+  signals.unshift(s);
+  if (signals.length > 20) signals.pop();
+  renderSignals();
+}
+
+function renderSignals() {
+  const list = document.getElementById('signalList');
+  list.innerHTML = signals.map(s => {
+    const confClass = s.conf > 80 ? '' : s.conf > 65 ? 'med' : 'low';
+    return `
+    <div class="signal-item">
+      <div class="signal-dir ${s.dir}">${s.dir === 'long' ? '▲' : '▼'}</div>
+      <div class="signal-body">
+        <div class="signal-ticker">${s.ticker}</div>
+        <div class="signal-strategy">${s.strat}</div>
+      </div>
+      <div class="signal-confidence">
+        <div class="conf-bar"><div class="conf-fill ${confClass}" style="height:${s.conf}%"></div></div>
+        <div class="conf-pct">${s.conf}%</div>
+      </div>
+      <div class="signal-right">
+        <div class="signal-price">${s.price}</div>
+        <div class="signal-time">${s.time}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── LOG ───────────────────────────────────────────────────────────────────────
+const logTemplates = [
+  { msg: 'Signal: NVDA LONG @ $120.10 — EMA cross confirmed', cls: 'success' },
+  { msg: 'Order filled: BUY 25 TSLA @ $172.80', cls: 'success' },
+  { msg: 'Stop triggered: AMD SHORT closed @ $106.40', cls: 'warn' },
+  { msg: 'Risk: Capital deployed > 70%, throttling signals', cls: 'warn' },
+  { msg: 'Signal filtered: AAPL — low confidence (48%)', cls: '' },
+  { msg: 'Order filled: SELL 100 SPY @ $521.60', cls: 'success' },
+  { msg: 'RSI strategy: MSFT cross above 50 detected', cls: 'success' },
+  { msg: 'Breakout scan: 0 new setups found in last bar', cls: '' },
+  { msg: 'EMA recalculated: 847 symbols scanned in 0.34s', cls: '' },
+  { msg: 'Order rejected: Insufficient margin — AMZN', cls: 'error' },
+];
+
+let logs = [];
+
+function addLog() {
+  const t = logTemplates[Math.floor(Math.random() * logTemplates.length)];
+  logs.unshift({ ...t, time: timeStr() });
+  if (logs.length > 30) logs.pop();
+  const panel = document.getElementById('logPanel');
+  panel.innerHTML = logs.map(l => `
+    <div class="log-line">
+      <span class="log-time">${l.time}</span>
+      <span class="log-msg ${l.cls}">${l.msg}</span>
+    </div>
+  `).join('');
+}
+
+// ── EQUITY CHART ──────────────────────────────────────────────────────────────
+let equityData = [];
+let baseVal = 200000;
+
+function initEquity() {
+  const pts = 78; // 6.5 hours * 12 = 78 five-min bars
+  let v = baseVal;
+  for (let i = 0; i < pts; i++) {
+    v += (Math.random() - 0.44) * 400;
+    equityData.push(v);
+  }
+}
+
+function drawChart() {
+  const canvas = document.getElementById('equityChart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 140 * dpr;
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = 140;
+
+  ctx.clearRect(0, 0, W, H);
+
+  const min = Math.min(...equityData) - 200;
+  const max = Math.max(...equityData) + 200;
+  const range = max - min;
+
+  const pts = equityData.map((v, i) => ({
+    x: (i / (equityData.length - 1)) * W,
+    y: H - ((v - min) / range) * (H - 20) - 10
+  }));
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(0,255,136,0.25)');
+  grad.addColorStop(1, 'rgba(0,255,136,0)');
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, H);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(pts[pts.length-1].x, H);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = '#00ff88';
+  ctx.shadowBlur = 6;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Baseline
+  const baseY = H - ((baseVal - min) / range) * (H - 20) - 10;
+  ctx.beginPath();
+  ctx.setLineDash([4, 6]);
+  ctx.moveTo(0, baseY);
+  ctx.lineTo(W, baseY);
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Current value dot
+  const last = pts[pts.length - 1];
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+  ctx.fillStyle = '#00ff88';
+  ctx.shadowColor = '#00ff88';
+  ctx.shadowBlur = 12;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+// ── LIVE UPDATES ─────────────────────────────────────────────────────────────
+let pnl = 4821;
+let engineOn = true;
+
+function updateStats() {
+  if (!engineOn) return;
+  const delta = (Math.random() - 0.42) * 80;
+  pnl += delta;
+  const portVal = 200000 + pnl;
+  const pct = (pnl / 200000 * 100).toFixed(2);
+  const sign = pnl >= 0 ? '+' : '';
+
+  document.getElementById('totalPnl').textContent = sign + '$' + Math.round(pnl).toLocaleString();
+  document.getElementById('totalPnl').className = 'stat-value ' + (pnl >= 0 ? 'green' : 'red');
+  document.getElementById('pnlDelta').textContent = (pnl >= 0 ? '▲ +' : '▼ ') + pct + '% today';
+  document.getElementById('pnlDelta').className = 'stat-delta ' + (pnl >= 0 ? 'up' : 'down');
+  document.getElementById('portValue').textContent = '$' + Math.round(portVal).toLocaleString();
+
+  // Update equity data
+  equityData.push(portVal);
+  if (equityData.length > 100) equityData.shift();
+  drawChart();
+
+  // Latency
+  document.getElementById('latency').textContent = (Math.floor(Math.random() * 18) + 8) + 'ms';
+}
+
+let sigInterval, logInterval, statInterval;
+
+function startIntervals() {
+  addSignal(); addLog();
+  sigInterval = setInterval(() => { if(engineOn) addSignal(); }, 3800);
+  logInterval = setInterval(() => { if(engineOn) addLog(); }, 2100);
+  statInterval = setInterval(() => { if(engineOn) updateStats(); }, 1200);
+}
+
+// ── CONTROLS ──────────────────────────────────────────────────────────────────
+function toggleEngine() {
+  engineOn = !engineOn;
+  const sw = document.getElementById('engineSwitch');
+  const lbl = document.getElementById('engineLabel');
+  sw.className = 'toggle-switch ' + (engineOn ? 'on' : '');
+  lbl.textContent = engineOn ? 'ENGINE ON' : 'ENGINE OFF';
+  document.getElementById('sigTag').textContent = engineOn ? 'LIVE' : 'PAUSED';
+  document.getElementById('sigTag').className = 'panel-tag ' + (engineOn ? 'tag-green' : 'tag-red');
+  if (engineOn) addLog();
+}
+
+function setMode(btn, mode) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (mode === 'LIVE') {
+    if (!confirm('⚠️ Switch to LIVE trading? Real money will be used.')) {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.mode-btn')[0].classList.add('active');
+    }
+  }
+}
+
+function toggleStrategy(card) {
+  const isActive = card.classList.contains('active');
+  const dot = card.querySelector('.strategy-status');
+  if (isActive) {
+    card.classList.remove('active');
+    dot.className = 'strategy-status status-off';
+  } else {
+    card.classList.add('active');
+    dot.className = 'strategy-status status-on';
+  }
+}
+
+function killSwitch() {
+  if (confirm('🛑 KILL SWITCH: Close all positions and halt engine?')) {
+    engineOn = false;
+    document.getElementById('engineSwitch').className = 'toggle-switch';
+    document.getElementById('engineLabel').textContent = 'ENGINE OFF';
+    document.getElementById('positionsBody').innerHTML = '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:20px;font-size:11px;letter-spacing:2px">— ALL POSITIONS CLOSED —</td></tr>';
+    addLog();
+    logs.unshift({ msg: '🛑 KILL SWITCH ACTIVATED — all positions liquidated', cls: 'error', time: timeStr() });
+    document.getElementById('logPanel').innerHTML = logs.map(l => `
+      <div class="log-line">
+        <span class="log-time">${l.time}</span>
+        <span class="log-msg ${l.cls}">${l.msg}</span>
+      </div>`).join('');
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  initEquity();
+  drawChart();
+  startIntervals();
+  // Add initial logs
+  for (let i = 0; i < 5; i++) {
+    const t = logTemplates[i];
+    logs.push({ ...t, time: timeStr() });
+  }
+  document.getElementById('logPanel').innerHTML = logs.map(l => `
+    <div class="log-line">
+      <span class="log-time">${l.time}</span>
+      <span class="log-msg ${l.cls}">${l.msg}</span>
+    </div>`).join('');
+  // Initial signals
+  for (let i = 0; i < 5; i++) addSignal();
+});
+
+window.addEventListener('resize', drawChart);
+</script>
+</body>
+</html>
